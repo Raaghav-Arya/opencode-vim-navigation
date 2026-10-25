@@ -8,15 +8,16 @@ export function navigation(context) {
   const active = () => popMode !== undefined
   function leave(follow = false) {
     if (!active()) return
-    popMode()
+    const release = popMode
     popMode = undefined
     pendingG = false
     sessionID = undefined
-    context.changed(false)
+    try { release() } finally { context.changed(false) }
     if (follow) context.dispatch("session.last")
   }
   function sync() {
-    if (active() && context.session() !== sessionID) leave()
+    if (active() && (context.session() !== sessionID || context.blocked?.()
+      || (context.mode.current() === MODE && !context.promptFocused()))) leave()
   }
   function scroll(id) {
     context.dispatch(id)
@@ -27,11 +28,14 @@ export function navigation(context) {
   }
   function key(event) {
     sync()
-    if (!context.session()) return
+    if (!context.session() || context.blocked?.()) return
     // Dialogs, permission forms, autocomplete, and embedded terminals own their keys.
     const mode = context.mode.current()
     if (mode !== "base" && mode !== MODE) return
-    if (!active() && !context.promptFocused()) return
+    if (!context.promptFocused()) {
+      if (active()) leave()
+      return
+    }
     const plain = !event.ctrl && !event.meta && !event.super && !event.hyper
     const ctrl = event.ctrl && !event.meta && !event.super && !event.hyper && !event.shift
     const name = event.name
@@ -91,7 +95,10 @@ export function navigation(context) {
   }
   function paste(event) {
     sync()
-    if (active() && context.mode.current() === MODE) consume(event)
+    if (active() && context.mode.current() === MODE) {
+      if (!context.promptFocused()) leave()
+      else consume(event)
+    }
   }
   return { key, paste, leave, sync, active }
 }

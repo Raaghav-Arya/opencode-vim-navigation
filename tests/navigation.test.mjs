@@ -22,6 +22,27 @@ function setup() {
     focused: value => { focused = value }, ready: value => { ready = value } }
 }
 
+test('cleanup resets controller state even if the host mode release throws', () => {
+  let mode = 'base', releases = 0
+  const changes = []
+  const controller = navigation({
+    session: () => 'session-1',
+    mode: { current: () => mode, push: value => {
+      mode = value
+      return () => { releases++; throw new Error('host mode failure') }
+    } },
+    promptFocused: () => true, ready: () => true,
+    changed: value => changes.push(value), dispatch: () => {},
+  })
+  controller.key({ name: 'q', ctrl: true, preventDefault() {}, stopPropagation() {} })
+  assert.equal(controller.active(), true)
+  assert.throws(() => controller.leave(), /host mode failure/)
+  assert.equal(controller.active(), false)
+  assert.deepEqual(changes, [true, false])
+  assert.doesNotThrow(() => controller.leave())
+  assert.equal(releases, 1)
+})
+
 test('Ctrl+Q toggles NAV and restores input following latest output', () => {
   const t = setup(); assert.ok(t.toggle().stopped); assert.ok(t.controller.active())
   t.toggle(); assert.equal(t.controller.active(), false)
