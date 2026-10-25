@@ -1,0 +1,35 @@
+{
+  "name": "opencode-vim-navigation",
+  "version": "0.1.0",
+  "description": "Modal Vim-style transcript navigation for the OpenCode terminal UI",
+  "license": "MIT",
+  "author": "Raaghav Arya",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Raaghav-Arya/opencode-vim-navigation.git"
+  },
+  "homepage": "https://github.com/Raaghav-Arya/opencode-vim-navigation#readme",
+  "bugs": {
+    "url": "https://github.com/Raaghav-Arya/opencode-vim-navigation/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "type": "module",
+  "keywords": ["opencode", "opencode-plugin", "tui", "vim", "navigation"],
+  "exports": {
+    "./tui": "./tui.ts"
+  },
+  "files": ["tui.ts", "src/"],
+  "peerDependencies": {
+    "@opentui/core": ">=0.6.8 <0.7.0",
+    "@opentui/solid": ">=0.6.8 <0.7.0",
+    "solid-js": "^1.9.15"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check src/navigation.mjs && node --check tests/navigation.test.mjs",
+    "prepublishOnly": "npm test && npm run check"
+  }
+}
