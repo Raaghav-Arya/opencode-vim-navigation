@@ -216,6 +216,26 @@ test('adapter: root forms include descendants and location-global forms, but not
   }
 })
 
+test('adapter: only tagged plan-review forms allow Ctrl+Q navigation', () => {
+  const t = fixture(); const cleanup = t.start()
+  const planReview = { id: 'plan-review', metadata: { plugin: 'raaghav.plan-review' } }
+  t.forms.set('root', [planReview])
+  t.context.renderer.currentFocusedEditor = new InputRenderable()
+  assertConsumed(t.toggle())
+  assert.equal(t.mode, 'transcript-navigation')
+  for (const [name, modifiers] of [['j'], ['return'], ['enter'], ['a']]) assertConsumed(t.key(name, modifiers))
+  assert.deepEqual(t.commands, ['session.line.down'])
+  assertConsumed(t.toggle())
+  assert.equal(t.mode, 'base')
+  t.forms.set('root', [planReview, { id: 'unrelated', metadata: { plugin: 'other' } }])
+  assertPassed(t.toggle())
+  t.forms.set('root', [{ id: 'unrelated', metadata: { plugin: 'other' } }])
+  assertPassed(t.toggle())
+  t.forms.set('root', [planReview]); t.permissions.set('child', [{ id: 'permission' }])
+  assertPassed(t.toggle())
+  cleanup(); t.assertClean()
+})
+
 test('adapter: child sessions do not aggregate requests, but always show location-global forms', () => {
   for (const ownLocation of [false, true]) {
     const t = fixture()

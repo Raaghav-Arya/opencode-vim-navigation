@@ -25,19 +25,32 @@ export function createSetup({ InputRenderable, TextareaRenderable, createElement
         && !traits.capture?.includes("navigate") && !traits.capture?.includes("submit")
         && !traits.capture?.includes("autocomplete")
     }
-    const blocked = () => {
+    const visibleForms = () => {
       const id = session()
-      if (!id) return false
+      if (!id) return []
       const info = data.session.get(id)
       const location = info?.location ?? context.location
       // Match the host's visible request set: root sessions aggregate their
       // descendants; child sessions show global/location forms only.
-      if (data.session.form.list("global", location)?.length) return true
-      if (info?.parentID) return false
+      const forms = [...(data.session.form.list("global", location) ?? [])]
+      if (info?.parentID) return forms
       const ids = new Set([id, ...data.session.family(id)])
-      return [...ids].some((sessionID) =>
-        data.session.permission.list(sessionID)?.length || data.session.form.list(sessionID)?.length,
-      )
+      for (const sessionID of ids) forms.push(...(data.session.form.list(sessionID) ?? []))
+      return forms
+    }
+    const planReviewForm = () => {
+      const forms = visibleForms()
+      return forms.length > 0 && forms.every((form) => form.metadata?.plugin === "raaghav.plan-review")
+    }
+    const blocked = () => {
+      const id = session()
+      if (!id) return false
+      const info = data.session.get(id)
+      if (info?.parentID) return visibleForms().some((form) => form.metadata?.plugin !== "raaghav.plan-review")
+      const location = info?.location ?? context.location
+      if (data.session.permission.list(id)?.length) return true
+      if (data.session.family(id).some((sessionID) => data.session.permission.list(sessionID)?.length)) return true
+      return visibleForms().some((form) => form.metadata?.plugin !== "raaghav.plan-review")
     }
     const required = ["session.line.up", "session.line.down", "session.page.up", "session.page.down", "session.first", "session.last"]
     const controller = navigation({
@@ -45,6 +58,7 @@ export function createSetup({ InputRenderable, TextareaRenderable, createElement
       mode: keymap.mode,
       promptFocused,
       blocked,
+      planReviewForm,
       ready: () => {
         const commands = new Set(keymap.commands().map((command) => command.id))
         if (required.every((id) => commands.has(id))) return true
@@ -78,6 +92,7 @@ export function createSetup({ InputRenderable, TextareaRenderable, createElement
           nav()
           session()
           blocked()
+          planReviewForm()
           promptFocused()
           controller.sync()
         })

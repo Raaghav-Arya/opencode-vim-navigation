@@ -7,6 +7,13 @@ scrollback—while keeping your prompt draft safe.
 Press **Ctrl+Q** to switch between INPUT and NAV. A compact, right-aligned
 mode label appears on a divider immediately above the prompt.
 
+When the native plan-review form is the only pending form, Ctrl+Q also enters
+NAV even though the prompt does not own focus. Navigation scrolls the session
+transcript behind the form; NAV consumes Enter, Escape, and all other
+non-navigation keys so they cannot approve, cancel, or edit the form. Press
+Ctrl+Q again to return to the form. Permission prompts and unrelated forms
+continue to own their keys and block NAV.
+
 ## Compatibility
 
 Tested with **OpenCode 2.1.4**. This uses OpenCode V2's TUI plugin API, not the

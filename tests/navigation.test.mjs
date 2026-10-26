@@ -3,12 +3,14 @@ import assert from 'node:assert/strict'
 import { navigation } from '../src/navigation.mjs'
 
 function setup() {
-  let mode = 'base', session = 'session-1', focused = true, ready = true
+  let mode = 'base', session = 'session-1', focused = true, ready = true, review = false, blocked = false
   const commands = [], changes = []
   const controller = navigation({
     session: () => session,
     mode: { current: () => mode, push: value => { const old = mode; mode = value; return () => { mode = old } } },
     promptFocused: () => focused,
+    planReviewForm: () => review,
+    blocked: () => blocked,
     ready: () => ready,
     dispatch: id => commands.push(id), changed: value => changes.push(value),
   })
@@ -19,7 +21,8 @@ function setup() {
   function key(name, modifiers) { const e = event(name, modifiers); controller.key(e); return e }
   return { controller, commands, changes, event, key, toggle: () => key('q', { ctrl: true }),
     mode: value => { mode = value }, session: value => { session = value },
-    focused: value => { focused = value }, ready: value => { ready = value } }
+    focused: value => { focused = value }, ready: value => { ready = value },
+    review: value => { review = value }, blocked: value => { blocked = value }, contextMode: () => mode }
 }
 
 test('cleanup resets controller state even if the host mode release throws', () => {
@@ -107,6 +110,25 @@ test('ordinary input keys, home screen and unfocused prompts are untouched', () 
   const t = setup(); assert.equal(t.key('j').stopped, false)
   t.focused(false); assert.equal(t.toggle().stopped, false)
   t.focused(true); t.session(undefined); assert.equal(t.toggle().stopped, false)
+})
+test('plan review form can enter NAV without prompt focus and consumes approval keys', () => {
+  const t = setup(); t.focused(false); t.review(true); t.mode('form')
+  assert.ok(t.toggle().stopped)
+  assert.equal(t.controller.active(), true)
+  for (const [name, modifiers] of [['j'], ['k'], ['return'], ['enter'], ['a'], ['r'], ['v', { ctrl: true }]]) {
+    assert.ok(t.key(name, modifiers).stopped)
+  }
+  assert.deepEqual(t.commands, ['session.line.down', 'session.line.up'])
+  assert.ok(t.key('q', { ctrl: true }).stopped)
+  assert.equal(t.controller.active(), false)
+  assert.equal(t.contextMode(), 'form')
+})
+test('plan form disappearance and unrelated blocking requests leave NAV safely', () => {
+  const t = setup(); t.focused(false); t.review(true); t.mode('form'); t.toggle()
+  t.review(false); t.controller.sync()
+  assert.equal(t.controller.active(), false)
+  t.review(true); t.blocked(true)
+  assert.equal(t.toggle().stopped, false)
 })
 test('route changes and cleanup reset NAV', () => {
   const t = setup(); t.toggle(); t.session('session-2'); t.controller.sync()
